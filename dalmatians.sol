@@ -7,12 +7,16 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
+import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
+import {DefaultOperatorFilterer} from "./DefaultOperatorFilterer.sol";
+import "./IBoxbies.sol";
 
-contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
+contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperatorFilterer {
   using Strings for uint256;
 
   bytes32 public merkleRoot;
   mapping(address => bool) public whitelistClaimed;
+  mapping(address => bool) public whitelist2Claimed;
 
   string public uriPrefix = '';
   string public uriSuffix = '.json';
@@ -20,14 +24,15 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
 
   uint256 public cost;
   uint256 public maxSupply;
-  uint256 public maxMintAmountPerTx = 1;
+  uint256 public maxMintAmountPerTx;
 
   bool public paused = true;
   bool public whitelistMintEnabled = false;
+  bool public whitelistMint2Enabled = false;
   bool public revealed = false;
 
-  address public bxCol1Contract = 0xFcbe95a3321878BB6636DF42CA60172a8D22444A;
-  ERC721AQueryable private bxCol1NFT;
+  IBoxbies public boxbiesContract = IBoxbies(0x5B38Da6a701c568545dCfcB03FcB875f56beddC4);
+  mapping(uint256 => bool) public usedBoxbiesNFTs;
 
   constructor(
     string memory _tokenName,
@@ -35,13 +40,17 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
     uint256 _cost,
     uint256 _maxSupply,
     uint256 _maxMintAmountPerTx,
-    string memory _hiddenMetadataUri
+    string memory _hiddenMetadataUri,
+    address _royaltyReceiver,
+    uint96 _royaltyNumerator,
+    address _boxbiesContract
   ) ERC721A(_tokenName, _tokenSymbol) {
     setCost(_cost);
     maxSupply = _maxSupply;
     maxMintAmountPerTx = _maxMintAmountPerTx;
     setHiddenMetadataUri(_hiddenMetadataUri);
-    bxCol1NFT = ERC721AQueryable(bxCol1Contract);
+    _setDefaultRoyalty(_royaltyReceiver, _royaltyNumerator);
+    boxbiesContract = IBoxbies(_boxbiesContract);
   }
 
   modifier mintCompliance(uint256 _mintAmount) {
@@ -62,27 +71,49 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
     bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
     require(MerkleProof.verify(_merkleProof, merkleRoot, leaf), 'Invalid proof!');
 
-    // Calculate mint amount based on BxCol1 NFT holdings
-    uint256 bxCol1NftCount = bxCol1NFT.balanceOf(_msgSender());
+    uint256 eligibleNfts = 0;
+    uint256[] memory tokens = boxbiesContract.tokensByOwner(_msgSender());
+    for (uint256 i = 0; i < tokens.length; i++) {
+        if (usedBoxbiesNFTs[tokens[i]] == false) {
+            eligibleNfts++;
+            usedBoxbiesNFTs[tokens[i]] = true;
+        }
+    }
 
-    if (bxCol1NftCount >= 50) {
-      _mintAmount = 100;
-    } else if (bxCol1NftCount >= 30) {
-      _mintAmount = 60;
-    } else if (bxCol1NftCount >= 10) {
-      _mintAmount = 20;
-    } else if (bxCol1NftCount >= 5) {
-      _mintAmount = 10;
-    } else if (bxCol1NftCount >= 1) {
-      _mintAmount = 2;
+    if (eligibleNfts >= 50) {
+        _mintAmount = 100;
+    } else if (eligibleNfts >= 30) {
+        _mintAmount = 60;
+    } else if (eligibleNfts >= 10) {
+        _mintAmount = 20;
+    } else if (eligibleNfts >= 5) {
+        _mintAmount = 10;
+    } else if (eligibleNfts >= 1) {
+        _mintAmount = 2;
     } else {
-      _mintAmount = 1;
+        _mintAmount = 1;
     }
 
     whitelistClaimed[_msgSender()] = true;
     _safeMint(_msgSender(), _mintAmount);
   }
 
+  function whitelistMint2(uint256 _mintAmount, bytes32[] calldata _merkleProof) public payable mintCompliance(_mintAmount) mintPriceCompliance(_mintAmount) {
+    // Verify whitelist requirements
+    require(whitelistMint2Enabled, 'The whitelist 2 sale is not enabled!');
+    require(!whitelist2Claimed[_msgSender()], 'Address already claimed!');
+    bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
+    require(MerkleProof.verify(_merkleProof, merkleRoot, leaf), 'Invalid proof!');
+
+    whitelist2Claimed[_msgSender()] = true;
+    _safeMint(_msgSender(), _mintAmount);
+  }
+
+  function markUsedNFTs(uint256[] calldata _tokenIds) external onlyOwner {
+    for (uint256 i = 0; i < _tokenIds.length; i++) {
+        usedBoxbiesNFTs[_tokenIds[i]] = true;
+    }
+  }
   function mint(uint256 _mintAmount) public payable mintCompliance(_mintAmount) mintPriceCompliance(_mintAmount) {
     require(!paused, 'The contract is paused!');
 
@@ -154,5 +185,36 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
 
   function _baseURI() internal view virtual override returns (string memory) {
     return uriPrefix;
+  }
+
+  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721A, ERC2981) returns (bool) {
+    return ERC721A.supportsInterface(interfaceId) || ERC2981.supportsInterface(interfaceId);
+  }
+
+  function setDefaultRoyalty(address receiver, uint96 feeNumerator) public onlyOwner {
+    _setDefaultRoyalty(receiver, feeNumerator);
+  }
+
+  //@dev following functions overrides the ERC721A methods in order to comply with OpenSea Standards:
+  //https://github.com/ProjectOpenSea/operator-filter-registry
+
+  function setApprovalForAll(address operator, bool approved) public override onlyAllowedOperatorApproval(operator) {
+    super.setApprovalForAll(operator, approved);
+  }
+
+  function approve(address operator, uint256 tokenId) public payable override onlyAllowedOperatorApproval(operator) {
+    super.approve(operator, tokenId);
+  }
+
+  function transferFrom(address from, address to, uint256 tokenId) public payable override onlyAllowedOperator(from) {
+    super.transferFrom(from, to, tokenId);
+  }
+
+  function safeTransferFrom(address from, address to, uint256 tokenId) public payable override onlyAllowedOperator(from) {
+    super.safeTransferFrom(from, to, tokenId);
+  }
+
+  function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public payable override onlyAllowedOperator(from) {
+    super.safeTransferFrom(from, to, tokenId, data);
   }
 }
