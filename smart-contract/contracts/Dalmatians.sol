@@ -1,5 +1,17 @@
 // SPDX-License-Identifier: MIT
 
+ /////////////////////////////////////////////////////////////////////////////////////////////////////////
+ //                                                                              @@                     //
+ // @@                @@          @@       @@@@@@@@    @@@@@@                    @@                     //
+ //  @@              @@           @@              @@   @@                     @@@@@@@@      @@          //
+ //   @@            @@   @@@@     @@             @@    @@      @@@@@@    @@@@    @@                     //
+ //    @@    @@    @@   @@  @@    @@@@@    @@@@@@@@    @@@@@       @@   @@       @@         @@  @@@@@@  //
+ //     @@  @@@@  @@    @@@@@     @@  @@          @@   @@      @@@@@@    @@@     @@         @@  @    @  //
+ //      @@@@  @@@@     @@        @@  @@          @@   @@      @   @@      @@    @@    @@   @@  @   @@  //
+ //       @@    @@       @@@@@    @@@@@    @@@@@@@@    @@      @@@@@@   @@@@     @@    @@   @@  @@@@@@  //
+ //                                                                                                     //
+ /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 pragma solidity >=0.8.9 <0.9.0;
 
 import 'erc721a/contracts/extensions/ERC721AQueryable.sol';
@@ -71,17 +83,8 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
   }
 
   //@dev This function does not verify if the wallet has alredy claimed, allowing the same address to mint multiple times if they have enough Boxbies.
-  function whitelistMint(uint256 _mintAmount, bytes32[] calldata _merkleProof) public payable mintCompliance(_mintAmount) mintPriceCompliance(_mintAmount) {
-    // Verify whitelist requirements
+  function whitelistMint(uint256 _mintAmount) public payable mintCompliance(_mintAmount) mintPriceCompliance(_mintAmount) {
     require(whitelistMintEnabled, 'The whitelist sale is not enabled!');
-    
-    if(merkleTreeEnabled){
-      bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
-      require(MerkleProof.verify(_merkleProof, merkleRoot, leaf), 'Invalid proof!');
-    } else {
-      require(whitelist[_msgSender()]);
-    }
-
     uint256 eligibleNfts = 0;
     uint256[] memory tokens = boxbiesContract.tokensByOwner(_msgSender());
     for (uint256 i = 0; i < tokens.length; i++) {
@@ -151,7 +154,7 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
     _safeMint(_msgSender(), _mintAmount);
   }
 
-  function airdrop() external onlyOwner mintCompliance(_mintAmount){
+  function airdrop() external mintCompliance(airdropList.length) onlyOwner {
 
     for(uint i = 0; i < airdropList.length; i++){
       _safeMint(airdropList[i], 1);
