@@ -151,7 +151,7 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
     _safeMint(_msgSender(), _mintAmount);
   }
 
-  function airdrop() external onlyOwner {
+  function airdrop() external onlyOwner mintCompliance(_mintAmount){
 
     for(uint i = 0; i < airdropList.length; i++){
       _safeMint(airdropList[i], 1);
