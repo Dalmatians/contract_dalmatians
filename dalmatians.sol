@@ -7,12 +7,21 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
+import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
+import {DefaultOperatorFilterer} from "./DefaultOperatorFilterer.sol";
+import "./IBoxbies.sol";
 
-contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
+contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperatorFilterer {
   using Strings for uint256;
 
   bytes32 public merkleRoot;
-  mapping(address => bool) public whitelistClaimed;
+
+  mapping(address => bool) public whitelist2Claimed;
+  mapping(address => bool) public whitelist;
+  mapping(address => bool) public whitelist2;
+  mapping(address => uint) public availableMints;
+
+  address[] public airdropList;
 
   string public uriPrefix = '';
   string public uriSuffix = '.json';
@@ -20,14 +29,16 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
 
   uint256 public cost;
   uint256 public maxSupply;
-  uint256 public maxMintAmountPerTx = 1;
+  uint256 public maxMintAmountPerTx;
 
+  bool public merkleTreeEnabled = true;
   bool public paused = true;
   bool public whitelistMintEnabled = false;
+  bool public whitelistMint2Enabled = false;
   bool public revealed = false;
 
-  address public bxCol1Contract = 0xFcbe95a3321878BB6636DF42CA60172a8D22444A;
-  ERC721AQueryable private bxCol1NFT;
+  IBoxbies public boxbiesContract = IBoxbies(0x5B38Da6a701c568545dCfcB03FcB875f56beddC4);
+  mapping(uint256 => bool) public usedBoxbiesNFTs;
 
   constructor(
     string memory _tokenName,
@@ -35,13 +46,17 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
     uint256 _cost,
     uint256 _maxSupply,
     uint256 _maxMintAmountPerTx,
-    string memory _hiddenMetadataUri
+    string memory _hiddenMetadataUri,
+    address _royaltyReceiver,
+    uint96 _royaltyNumerator,
+    address _boxbiesContract
   ) ERC721A(_tokenName, _tokenSymbol) {
     setCost(_cost);
     maxSupply = _maxSupply;
     maxMintAmountPerTx = _maxMintAmountPerTx;
     setHiddenMetadataUri(_hiddenMetadataUri);
-    bxCol1NFT = ERC721AQueryable(bxCol1Contract);
+    _setDefaultRoyalty(_royaltyReceiver, _royaltyNumerator);
+    boxbiesContract = IBoxbies(_boxbiesContract);
   }
 
   modifier mintCompliance(uint256 _mintAmount) {
@@ -55,38 +70,96 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
     _;
   }
 
+  //@dev This function does not verify if the wallet has alredy claimed, allowing the same address to mint multiple times if they have enough Boxbies.
   function whitelistMint(uint256 _mintAmount, bytes32[] calldata _merkleProof) public payable mintCompliance(_mintAmount) mintPriceCompliance(_mintAmount) {
     // Verify whitelist requirements
     require(whitelistMintEnabled, 'The whitelist sale is not enabled!');
-    require(!whitelistClaimed[_msgSender()], 'Address already claimed!');
-    bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
-    require(MerkleProof.verify(_merkleProof, merkleRoot, leaf), 'Invalid proof!');
-
-    // Calculate mint amount based on BxCol1 NFT holdings
-    uint256 bxCol1NftCount = bxCol1NFT.balanceOf(_msgSender());
-
-    if (bxCol1NftCount >= 50) {
-      _mintAmount = 100;
-    } else if (bxCol1NftCount >= 30) {
-      _mintAmount = 60;
-    } else if (bxCol1NftCount >= 10) {
-      _mintAmount = 20;
-    } else if (bxCol1NftCount >= 5) {
-      _mintAmount = 10;
-    } else if (bxCol1NftCount >= 1) {
-      _mintAmount = 2;
+    
+    if(merkleTreeEnabled){
+      bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
+      require(MerkleProof.verify(_merkleProof, merkleRoot, leaf), 'Invalid proof!');
     } else {
-      _mintAmount = 1;
+      require(whitelist[_msgSender()]);
     }
 
-    whitelistClaimed[_msgSender()] = true;
+    uint256 eligibleNfts = 0;
+    uint256[] memory tokens = boxbiesContract.tokensByOwner(_msgSender());
+    for (uint256 i = 0; i < tokens.length; i++) {
+        if (usedBoxbiesNFTs[tokens[i]] == false) {
+            eligibleNfts++;
+            usedBoxbiesNFTs[tokens[i]] = true;
+        }
+    }
+    uint availableToMint;
+
+    if (eligibleNfts >= 50) {
+      availableToMint = 100;
+      require(_mintAmount > availableToMint, "Mint Amount limit exceeded.");
+
+    } else if (eligibleNfts >= 30) {
+      availableToMint = 60;
+      require(_mintAmount > availableToMint, "Mint Amount limit exceeded.");
+
+    } else if (eligibleNfts >= 10) {
+      availableToMint = 20;
+      require(_mintAmount > availableToMint, "Mint Amount limit exceeded.");
+
+    } else if (eligibleNfts >= 5) {
+      availableToMint = 10;
+      require(_mintAmount > availableToMint, "Mint Amount limit exceeded.");
+
+    } else if (eligibleNfts >= 1) {
+      availableToMint = 2;
+      require(_mintAmount > availableToMint, "Mint Amount limit exceeded.");
+
+    } else {
+        revert("No eligible NFTs found in the wallet.");
+    }
+
+    if(_mintAmount < availableToMint){
+      availableMints[_msgSender()] = availableToMint - _mintAmount;
+    }
+
     _safeMint(_msgSender(), _mintAmount);
+  }
+
+  function whitelistMint2(uint256 _mintAmount, bytes32[] calldata _merkleProof) public payable mintCompliance(_mintAmount) mintPriceCompliance(_mintAmount) {
+    // Verify whitelist requirements
+    require(whitelistMint2Enabled, 'The whitelist 2 sale is not enabled!');
+    require(!whitelist2Claimed[_msgSender()], 'Address already claimed!');
+
+    if(merkleTreeEnabled){
+      bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
+      require(MerkleProof.verify(_merkleProof, merkleRoot, leaf), 'Invalid proof!');
+    } else {
+      require(whitelist2[msg.sender]);
+    }
+
+    whitelist2Claimed[_msgSender()] = true;
+    _safeMint(_msgSender(), _mintAmount);
+  }
+
+  function markUsedNFTs(uint256[] calldata _tokenIds) external onlyOwner {
+    for (uint256 i = 0; i < _tokenIds.length; i++) {
+        usedBoxbiesNFTs[_tokenIds[i]] = true;
+    }
   }
 
   function mint(uint256 _mintAmount) public payable mintCompliance(_mintAmount) mintPriceCompliance(_mintAmount) {
     require(!paused, 'The contract is paused!');
 
     _safeMint(_msgSender(), _mintAmount);
+  }
+
+  function airdrop() external onlyOwner {
+
+    for(uint i = 0; i < airdropList.length; i++){
+      _safeMint(airdropList[i], 1);
+    }
+  }
+
+  function setAirdropList(address[] calldata _airdropList) external onlyOwner {
+    airdropList = _airdropList;
   }
   
   function mintForAddress(uint256 _mintAmount, address _receiver) public mintCompliance(_mintAmount) onlyOwner {
@@ -108,6 +181,22 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
     return bytes(currentBaseURI).length > 0
         ? string(abi.encodePacked(currentBaseURI, _tokenId.toString(), uriSuffix))
         : '';
+  }
+
+  function setMerkleTreeStatus(bool _state) public onlyOwner {
+    merkleTreeEnabled = _state;
+  }
+
+  function setWhitelist(bool firstWhitelist, address[] calldata addresses) public onlyOwner {
+    if(firstWhitelist){
+      for(uint i = 1; i < addresses.length; i++){
+        whitelist[msg.sender] = true;
+      }
+    } else {
+      for(uint i = 1; i < addresses.length; i++){
+        whitelist2[msg.sender] = true;
+      }
+    }
   }
 
   function setRevealed(bool _state) public onlyOwner {
@@ -154,5 +243,36 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard {
 
   function _baseURI() internal view virtual override returns (string memory) {
     return uriPrefix;
+  }
+
+  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721A, ERC2981) returns (bool) {
+    return ERC721A.supportsInterface(interfaceId) || ERC2981.supportsInterface(interfaceId);
+  }
+
+  function setDefaultRoyalty(address receiver, uint96 feeNumerator) public onlyOwner {
+    _setDefaultRoyalty(receiver, feeNumerator);
+  }
+
+  //@dev following functions overrides the ERC721A methods in order to comply with OpenSea Standards:
+  //https://github.com/ProjectOpenSea/operator-filter-registry
+
+  function setApprovalForAll(address operator, bool approved) public override onlyAllowedOperatorApproval(operator) {
+    super.setApprovalForAll(operator, approved);
+  }
+
+  function approve(address operator, uint256 tokenId) public payable override onlyAllowedOperatorApproval(operator) {
+    super.approve(operator, tokenId);
+  }
+
+  function transferFrom(address from, address to, uint256 tokenId) public payable override onlyAllowedOperator(from) {
+    super.transferFrom(from, to, tokenId);
+  }
+
+  function safeTransferFrom(address from, address to, uint256 tokenId) public payable override onlyAllowedOperator(from) {
+    super.safeTransferFrom(from, to, tokenId);
+  }
+
+  function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public payable override onlyAllowedOperator(from) {
+    super.safeTransferFrom(from, to, tokenId, data);
   }
 }
