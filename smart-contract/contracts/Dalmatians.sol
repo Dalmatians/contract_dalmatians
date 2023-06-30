@@ -20,7 +20,7 @@ import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
-import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
+import {DefaultOperatorFilterer} from "./DefaultOperatorFilterer.sol";
 import "./IBoxbies.sol";
 
 contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperatorFilterer {
@@ -99,30 +99,26 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
 
     if (eligibleNfts >= 50) {
       availableToMint = 100;
-      require(_mintAmount < availableToMint, "Mint Amount limit exceeded.");
+      require(_mintAmount <= availableToMint, "Mint Amount limit exceeded.");
 
     } else if (eligibleNfts >= 30) {
       availableToMint = 60;
-      require(_mintAmount < availableToMint, "Mint Amount limit exceeded.");
+      require(_mintAmount <= availableToMint, "Mint Amount limit exceeded.");
 
     } else if (eligibleNfts >= 10) {
       availableToMint = 20;
-      require(_mintAmount < availableToMint, "Mint Amount limit exceeded.");
+      require(_mintAmount <= availableToMint, "Mint Amount limit exceeded.");
 
     } else if (eligibleNfts >= 5) {
       availableToMint = 10;
-      require(_mintAmount < availableToMint, "Mint Amount limit exceeded.");
+      require(_mintAmount <= availableToMint, "Mint Amount limit exceeded.");
 
     } else if (eligibleNfts >= 1) {
       availableToMint = 2;
-      require(_mintAmount < availableToMint, "Mint Amount limit exceeded.");
+      require(_mintAmount <= availableToMint, "Mint Amount limit exceeded.");
 
     } else {
         revert("No eligible NFTs found in the wallet.");
-    }
-
-    if(_mintAmount < availableToMint){
-      availableMints[_msgSender()] = availableToMint - _mintAmount;
     }
 
     _safeMint(_msgSender(), _mintAmount);
