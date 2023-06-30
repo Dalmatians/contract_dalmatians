@@ -15,6 +15,7 @@
     </div>
     <div class="mainCont">
       <div class="container">
+        <count-down-timer />
         <div v-if="Web3.isNotMainnet" class="alert alert-warning" role="alert">
           You are not connected to the main network. <span class="small">Current network: <strong>{{Web3.network?.name}}</strong></span>
         </div>
@@ -84,6 +85,7 @@
 import { watch, ref } from 'vue'
 import CollectionStatus from '@/components/CollectionStatus.vue'
 import MintWidget from '@/components/MintWidget.vue'
+import CountDownTimer from '@/components/CountDownTimer.vue'
 import { useWeb3 } from '@/store/Web3'
 
 const Web3 = useWeb3()
