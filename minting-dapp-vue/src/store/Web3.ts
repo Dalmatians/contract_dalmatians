@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 import { EthereumClient, w3mConnectors, w3mProvider } from '@web3modal/ethereum'
 import { Web3Modal } from '@web3modal/html'
 import { configureChains, createConfig, getContract, prepareWriteContract, writeContract, waitForTransaction } from '@wagmi/core'
-import { arbitrum, mainnet, polygon, hardhat } from '@wagmi/core/chains'
+import { polygon } from '@wagmi/core/chains'
 import { publicProvider } from '@wagmi/core/providers/public'
 import { toast } from 'vue3-toastify'
 
