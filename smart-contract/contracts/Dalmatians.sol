@@ -20,7 +20,7 @@ import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
-import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
+import {DefaultOperatorFilterer} from "./DefaultOperatorFilterer.sol";
 import "./IBoxbies.sol";
 
 contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperatorFilterer {
@@ -42,6 +42,8 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
   uint256 public cost;
   uint256 public maxSupply;
   uint256 public maxMintAmountPerTx;
+  uint256 public whitelist2MintAmount;
+  uint256 public whitelist2Limit;
 
   bool public merkleTreeEnabled = true;
   bool public paused = true;
@@ -61,6 +63,7 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
     string memory _hiddenMetadataUri,
     address _royaltyReceiver,
     uint96 _royaltyNumerator,
+    uint256 _whitelist2Limit,
     address _boxbiesContract
   ) ERC721A(_tokenName, _tokenSymbol) {
     setCost(_cost);
@@ -69,6 +72,7 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
     setHiddenMetadataUri(_hiddenMetadataUri);
     _setDefaultRoyalty(_royaltyReceiver, _royaltyNumerator);
     boxbiesContract = IBoxbies(_boxbiesContract);
+    whitelist2Limit = _whitelist2Limit;
   }
 
   modifier mintCompliance(uint256 _mintAmount) {
@@ -126,10 +130,11 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
     _safeMint(_msgSender(), _mintAmount);
   }
 
-  function whitelistMint2(uint256 _mintAmount, bytes32[] calldata _merkleProof) public payable mintCompliance(_mintAmount) mintPriceCompliance(_mintAmount) {
+  function whitelistMint2(bytes32[] calldata _merkleProof) public payable mintCompliance(1) mintPriceCompliance(1) {
     // Verify whitelist requirements
     require(whitelistMint2Enabled, 'The whitelist 2 sale is not enabled!');
     require(!whitelist2Claimed[_msgSender()], 'Address already claimed!');
+    require(whitelist2MintAmount <= whitelist2Limit, 'Minting Phase Supply reached.');
 
     if(merkleTreeEnabled){
       bytes32 leaf = keccak256(abi.encodePacked(_msgSender()));
@@ -138,8 +143,9 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
       require(whitelist2[msg.sender]);
     }
 
+    whitelist2MintAmount++;
     whitelist2Claimed[_msgSender()] = true;
-    _safeMint(_msgSender(), _mintAmount);
+    _safeMint(_msgSender(), 1);
   }
 
   function markUsedNFTs(uint256[] calldata _tokenIds) external onlyOwner {
@@ -159,6 +165,10 @@ contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperat
     for(uint i = 0; i < airdropList.length; i++){
       _safeMint(airdropList[i], 1);
     }
+  }
+
+  function setWhitelist2Limit(uint _whitelist2Limit) external onlyOwner {
+    whitelist2Limit = _whitelist2Limit;
   }
 
   function setAirdropList(address[] calldata _airdropList) external onlyOwner {
