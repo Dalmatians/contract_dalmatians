@@ -4,6 +4,7 @@ import { EthereumClient, w3mConnectors, w3mProvider } from '@web3modal/ethereum'
 import { Web3Modal } from '@web3modal/html'
 import { configureChains, createConfig, getContract, prepareWriteContract, writeContract, waitForTransaction } from '@wagmi/core'
 import { arbitrum, mainnet, polygon, hardhat } from '@wagmi/core/chains'
+import { publicProvider } from '@wagmi/core/providers/public'
 import { toast } from 'vue3-toastify'
 
 import NetworkConfigInterface from '../../../smart-contract/lib/NetworkConfigInterface'
@@ -21,7 +22,6 @@ interface Network {
 
 interface State {
   contract: any,
-  boxieContract: any,
   initDone: boolean,
   userAddress: `0x${string}`|null|undefined;
   network: Network|null;
@@ -36,11 +36,13 @@ interface State {
   isUserInWhitelist: boolean;
   merkleProofManualAddressStatus: boolean|null;
   errorMessage: string|JSX.Element|null;
+  // BOXIE
+  boxieContract: any
+  boxieOwned: number
 }
 
 const defaultState: State = {
   contract: null,
-  boxieContract: null,
   initDone: false,
   userAddress: null,
   network: null,
@@ -54,17 +56,27 @@ const defaultState: State = {
   isWhitelistMintEnabled: false,
   isUserInWhitelist: false,
   merkleProofManualAddressStatus: null,
-  errorMessage: null
+  errorMessage: null,
+  // BOXIE
+  boxieContract: null,
+  boxieOwned: 0
 }
 
-const chains = [polygon]
+// const chains = [polygon]
 const projectId = '0d83d4f2cf23d3ecafdec74d1e273513'
 
-const { publicClient } = configureChains(chains, [w3mProvider({ projectId })])
+// const { publicClient } = configureChains(chains, [w3mProvider({ projectId })])
+const { chains, publicClient, webSocketPublicClient } = configureChains(
+  [polygon],
+  [publicProvider()]
+)
+
 const wagmiConfig = createConfig({
   autoConnect: true,
-  connectors: w3mConnectors({ projectId, chains }),
-  publicClient
+  // connectors: w3mConnectors({ projectId, chains }),
+  // publicClient
+  publicClient,
+  webSocketPublicClient
 })
 const ethereumClient = new EthereumClient(wagmiConfig, chains)
 const web3modal = new Web3Modal({ projectId }, ethereumClient)
@@ -111,8 +123,7 @@ export const useWeb3 = defineStore('Web3', {
         // console.log('ACCOUNT EVENT', isConnected, address)
         if (isConnected) {
           this.userAddress = address
-
-          // console.log('===>', await this.boxieContract.read.tokensByOwner([this.userAddress]))
+          this.boxieOwned = (await this.boxieContract.read.tokensByOwner([this.userAddress])).length
         } else {
           this.userAddress = null
         }

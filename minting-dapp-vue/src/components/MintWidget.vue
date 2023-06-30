@@ -33,7 +33,6 @@ import { useWeb3 } from '@/store/Web3'
 
 export default class HelloWorld extends Vue {
   Web3 = useWeb3()
-  mintAmount = 0
 
   get canMint (): boolean {
     return !this.Web3.isPaused || this.canWhitelistMint
@@ -47,10 +46,19 @@ export default class HelloWorld extends Vue {
     return utils.formatEther(this.Web3.tokenPrice * BigInt(this.mintAmount)).toString()
   }
 
-  changeAmount (off: number) {
-    if (this.mintAmount + off >= 0 && this.mintAmount + off <= this.Web3.maxMintAmountPerTx) {
-      this.mintAmount += off
+  get mintAmount (): number {
+    if (this.Web3.boxieOwned >= 50) {
+      return 100
+    } else if (this.Web3.boxieOwned >= 30) {
+      return 60
+    } else if (this.Web3.boxieOwned >= 10) {
+      return 20
+    } else if (this.Web3.boxieOwned >= 5) {
+      return 10
+    } else if (this.Web3.boxieOwned >= 1) {
+      return 2
     }
+    return 0
   }
 
   async mint (): Promise<void> {
