@@ -11,6 +11,7 @@ const ContractArguments = [
   CollectionConfig.hiddenMetadataUri,
   CollectionConfig.royaltyReceiver,
   CollectionConfig.royaltyNumerator,
+  CollectionConfig.whitelist2Limit,
   CollectionConfig.boxbiesContract
 ] as const;
 
