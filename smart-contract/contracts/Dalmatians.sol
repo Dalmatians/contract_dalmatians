@@ -20,7 +20,7 @@ import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/Strings.sol';
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
-import {DefaultOperatorFilterer} from "./DefaultOperatorFilterer.sol";
+import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 import "./IBoxbies.sol";
 
 contract Dalmatians is ERC721A, Ownable, ReentrancyGuard, ERC2981, DefaultOperatorFilterer {
