@@ -23,6 +23,5 @@ export default interface CollectionConfigInterface {
   whitelistAddresses: string[];
   royaltyReceiver: string | null;
   royaltyNumerator: string | null;
-  whitelist2Limit: number;
   boxbiesContract: string;
 }
