@@ -10,9 +10,9 @@
       </div>
 
       <div className="controls">
-        <!-- <button className="decrease" @click="changeAmount(-1)" :disabled="Web3.loading">-</button> -->
+        <button className="decrease" @click="changeAmount(-1)" :disabled="Web3.loading">-</button>
         <span className="mint-amount">{{mintAmount}}</span>
-       <!--  <button className="increase" @click="changeAmount(1)" :disabled="Web3.loading">+</button> -->
+        <button className="increase" @click="changeAmount(1)" :disabled="Web3.loading">+</button>
         <button className="primary" @click="mint" :disabled="Web3.loading || mintAmount == 0">Mint</button>
       </div>
     </div>
@@ -33,6 +33,7 @@ import { useWeb3 } from '@/store/Web3'
 
 export default class HelloWorld extends Vue {
   Web3 = useWeb3()
+  mintAmount = 0
 
   get canMint (): boolean {
     return !this.Web3.isPaused || this.canWhitelistMint || this.Web3.boxieOwned > 0
@@ -46,7 +47,7 @@ export default class HelloWorld extends Vue {
     return utils.formatEther(this.Web3.tokenPrice * BigInt(this.mintAmount)).toString()
   }
 
-  get mintAmount (): number {
+  get maxMintAmount (): number {
     if (this.Web3.boxieOwned >= 50) {
       return 100
     } else if (this.Web3.boxieOwned >= 30) {
@@ -59,6 +60,12 @@ export default class HelloWorld extends Vue {
       return 2
     }
     return 0
+  }
+
+  changeAmount (off: number) {
+    if (this.mintAmount + off >= 0 && this.mintAmount + off <= this.maxMintAmount) {
+      this.mintAmount += off
+    }
   }
 
   async mint (): Promise<void> {
