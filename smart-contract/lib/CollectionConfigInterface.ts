@@ -21,4 +21,7 @@ export default interface CollectionConfigInterface {
   marketplaceIdentifier: string;
   marketplaceConfig: MarketplaceConfigInterface;
   whitelistAddresses: string[];
+  royaltyReceiver: string | null;
+  royaltyNumerator: string | null;
+  boxbiesContract: string;
 }

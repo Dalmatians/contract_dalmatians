@@ -12,7 +12,7 @@ import Whitelist from '../scripts/lib/Whitelist'
 
 // eslint-disable-next-line
 // const ContractAbi = require(`../../../smart-contract/artifacts/contracts/${CollectionConfig.contractName}.sol/${CollectionConfig.contractName}.json`).abi
-import { dalmaABI } from '../generated'
+import { dalmatiansABI, iBoxbiesABI } from '../generated'
 
 interface Network {
   name: string,
@@ -21,6 +21,7 @@ interface Network {
 
 interface State {
   contract: any,
+  boxieContract: any,
   initDone: boolean,
   userAddress: `0x${string}`|null|undefined;
   network: Network|null;
@@ -39,6 +40,7 @@ interface State {
 
 const defaultState: State = {
   contract: null,
+  boxieContract: null,
   initDone: false,
   userAddress: null,
   network: null,
@@ -55,7 +57,7 @@ const defaultState: State = {
   errorMessage: null
 }
 
-const chains = [hardhat]
+const chains = [polygon]
 const projectId = '0d83d4f2cf23d3ecafdec74d1e273513'
 
 const { publicClient } = configureChains(chains, [w3mProvider({ projectId })])
@@ -69,7 +71,7 @@ const web3modal = new Web3Modal({ projectId }, ethereumClient)
 
 const contractConf = {
   address: CollectionConfig.contractAddress as `0x${string}`,
-  abi: dalmaABI
+  abi: dalmatiansABI
 }
 
 export const useWeb3 = defineStore('Web3', {
@@ -84,23 +86,33 @@ export const useWeb3 = defineStore('Web3', {
         walletClient: ethereumClient
       })
 
-      this.$patch({
-        maxSupply: Number(await this.contract.read.maxSupply([])),
-        totalSupply: Number(await this.contract.read.totalSupply([])),
-        maxMintAmountPerTx: Number(await this.contract.read.maxMintAmountPerTx([])),
-        tokenPrice: await this.contract.read.cost([]),
-        isPaused: await this.contract.read.paused([]),
-        isWhitelistMintEnabled: await this.contract.read.whitelistMintEnabled([]),
-        isUserInWhitelist: Whitelist.contains(this.userAddress ?? '')
+      this.boxieContract = getContract({
+        address: CollectionConfig.boxbiesContract as `0x${string}`,
+        abi: iBoxbiesABI,
+        chainId: polygon.id
       })
+
+      try {
+        this.$patch({
+          maxSupply: Number(await this.contract.read.maxSupply([])),
+          totalSupply: Number(await this.contract.read.totalSupply([])),
+          maxMintAmountPerTx: Number(await this.contract.read.maxMintAmountPerTx([])),
+          tokenPrice: await this.contract.read.cost([]),
+          isPaused: await this.contract.read.paused([]),
+          isWhitelistMintEnabled: await this.contract.read.whitelistMintEnabled([]),
+          isUserInWhitelist: Whitelist.contains(this.userAddress ?? '')
+        })
+      } catch (e) {}
 
       this.initDone = true
     },
     async registerWalletEvents () {
-      ethereumClient.watchAccount(({ isConnected, address }) => {
+      ethereumClient.watchAccount(async ({ isConnected, address }) => {
         // console.log('ACCOUNT EVENT', isConnected, address)
         if (isConnected) {
           this.userAddress = address
+
+          // console.log('===>', await this.boxieContract.read.tokensByOwner([this.userAddress]))
         } else {
           this.userAddress = null
         }
@@ -229,7 +241,7 @@ export const useWeb3 = defineStore('Web3', {
         const { request } = await prepareWriteContract({
           ...contractConf,
           functionName: 'whitelistMint',
-          args: [BigInt(amount), Whitelist.getProofForAddress(this.userAddress!) as `0x${string}`[]],
+          args: [BigInt(amount)],
           value
         })
 

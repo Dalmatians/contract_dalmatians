@@ -30,6 +30,9 @@ const CollectionConfig: CollectionConfigInterface = {
   marketplaceIdentifier: "dalmatians-official",
   marketplaceConfig: Marketplaces.openSea,
   whitelistAddresses,
+  royaltyReceiver: null,
+  royaltyNumerator: null,
+  boxbiesContract: "0x0ae568DfC0745387C504B240D8AdE5e74b9fD2bB",
 };
 
 export default CollectionConfig;
