@@ -112,7 +112,7 @@ export const useWeb3 = defineStore('Web3', {
           tokenPrice: await this.contract.read.cost([]),
           isPaused: await this.contract.read.paused([]),
           isWhitelistMintEnabled: await this.contract.read.whitelistMintEnabled([]),
-          isUserInWhitelist: true // Whitelist.contains(this.userAddress ?? '') DISABLED WHITELIST CHECK
+          isUserInWhitelist: Whitelist.contains(this.userAddress ?? '')
         })
       } catch (e) {}
 

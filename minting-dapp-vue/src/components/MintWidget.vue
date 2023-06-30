@@ -35,7 +35,7 @@ export default class HelloWorld extends Vue {
   Web3 = useWeb3()
 
   get canMint (): boolean {
-    return !this.Web3.isPaused || this.canWhitelistMint
+    return !this.Web3.isPaused || this.canWhitelistMint || this.Web3.boxieOwned > 0
   }
 
   private get canWhitelistMint (): boolean {
