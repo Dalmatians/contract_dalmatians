@@ -40,7 +40,7 @@ export default class HelloWorld extends Vue {
   }
 
   private get canWhitelistMint (): boolean {
-    return this.Web3.isWhitelistMintEnabled && this.Web3.isUserInWhitelist
+    return this.Web3.isWhitelistMintEnabled || (this.Web3.isWhitelistMint2Enabled && this.Web3.isUserInWhitelist)
   }
 
   get formattedPrice (): string {
@@ -73,6 +73,12 @@ export default class HelloWorld extends Vue {
       await this.Web3.mintTokens(this.mintAmount)
       return
     }
+
+    if (this.Web3.isWhitelistMint2Enabled) {
+      await this.Web3.whitelistMint2Tokens(this.mintAmount)
+      return
+    }
+
     await this.Web3.whitelistMintTokens(this.mintAmount)
   }
 }

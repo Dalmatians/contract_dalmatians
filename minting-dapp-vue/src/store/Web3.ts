@@ -38,7 +38,8 @@ interface State {
   errorMessage: string|JSX.Element|null;
   // BOXIE
   boxieContract: any
-  boxieOwned: number
+  boxieOwned: number,
+  isWhitelistMint2Enabled: boolean
 }
 
 const defaultState: State = {
@@ -59,7 +60,8 @@ const defaultState: State = {
   errorMessage: null,
   // BOXIE
   boxieContract: null,
-  boxieOwned: 0
+  boxieOwned: 0,
+  isWhitelistMint2Enabled: false
 }
 
 // const chains = [polygon]
@@ -112,6 +114,7 @@ export const useWeb3 = defineStore('Web3', {
           tokenPrice: await this.contract.read.cost([]),
           isPaused: await this.contract.read.paused([]),
           isWhitelistMintEnabled: await this.contract.read.whitelistMintEnabled([]),
+          isWhitelistMint2Enabled: await this.contract.read.whitelistMint2Enabled([]),
           isUserInWhitelist: true // Whitelist.contains(this.userAddress ?? '') DISABLED WHITELIST CHECK
         })
       } catch (e) {}
@@ -253,6 +256,25 @@ export const useWeb3 = defineStore('Web3', {
           ...contractConf,
           functionName: 'whitelistMint',
           args: [BigInt(amount)],
+          value
+        })
+
+        await this.handleTransaction(request)
+
+        this.loading = false
+      } catch (e) {
+        this.setError(e)
+        this.loading = false
+      }
+    },
+    async whitelistMint2Tokens (amount: number): Promise<void> {
+      try {
+        this.loading = true
+        const value = this.tokenPrice * BigInt(amount)
+        const { request } = await prepareWriteContract({
+          ...contractConf,
+          functionName: 'whitelistMint2',
+          args: [Whitelist.getProofForAddress(this.userAddress!) as `0x${string}`[]],
           value
         })
 
