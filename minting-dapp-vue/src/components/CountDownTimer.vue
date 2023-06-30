@@ -1,8 +1,8 @@
 <template>
     <div class="countDown" v-if="displayCountDown">
-        <h2 class="text-animation" v-if="isLive">OG Drop is now LIVE</h2>
+        <h2 class="text-animation" v-if="isLive">Public Drop is now LIVE</h2>
         <div v-else>
-            <h2 class="cdTitle">OG Drop starts in:</h2>
+            <h2 class="cdTitle">Public Drop starts in:</h2>
             <section>
                 <section class="timer">
                     <div>
@@ -58,7 +58,7 @@ export default {
   },
   methods: {
     startTimer () {
-      const countdownDate = new Date('June 30, 2023 16:00:00').getTime()
+      const countdownDate = new Date('June 31, 2023 16:00:00').getTime()
       const interval = setInterval(() => {
         const now = new Date()
         const nowUTC = new Date(
