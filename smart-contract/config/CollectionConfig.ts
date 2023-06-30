@@ -11,28 +11,28 @@ const CollectionConfig: CollectionConfigInterface = {
   // Please DO NOT change it manually!
   contractName: "Dalmatians",
   tokenName: "Dalmatians",
-  tokenSymbol: "DLMTS",
+  tokenSymbol: "WOOF",
   hiddenMetadataUri: "ipfs://QmbLU3Hy8YtMyEgQLhZ2t4odQqf5f2TCf2dUUApAFuUKnM/0.json",
   maxSupply: 5000,
   whitelistSale: {
-    price: 0.0,
-    maxMintAmountPerTx: 5,
+    price: 0.49,
+    maxMintAmountPerTx: 1500,
   },
   preSale: {
-    price: 0.0,
-    maxMintAmountPerTx: 5,
+    price: 0.49,
+    maxMintAmountPerTx: 1500,
   },
   publicSale: {
-    price: 0.0,
-    maxMintAmountPerTx: 5,
+    price: 0.49,
+    maxMintAmountPerTx: 1500,
   },
-  contractAddress: "0xC73B38328872593bB3b8e1b11E5f8Efb5d54D38D",
+  contractAddress: "0x7CE5Bebcb5368304054880B85f5D97330E6115Ef",
   marketplaceIdentifier: "dalmatians-official",
   marketplaceConfig: Marketplaces.openSea,
   whitelistAddresses,
   whitelist2Limit: 0,
-  royaltyReceiver: null,
-  royaltyNumerator: null,
+  royaltyReceiver: "0x4af9CA5Fd841D2B04c59cf38290891ceEE9b8981",
+  royaltyNumerator: "1000",
   boxbiesContract: "0x0ae568DfC0745387C504B240D8AdE5e74b9fD2bB"
 };
 
