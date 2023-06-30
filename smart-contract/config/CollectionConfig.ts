@@ -11,9 +11,9 @@ const CollectionConfig: CollectionConfigInterface = {
   // Please DO NOT change it manually!
   contractName: "Dalmatians",
   tokenName: "Dalmatians",
-  tokenSymbol: "SDZ",
-  hiddenMetadataUri: "ipfs://__CID__/hidden.json",
-  maxSupply: 6969,
+  tokenSymbol: "DLMTS",
+  hiddenMetadataUri: "ipfs://QmbLU3Hy8YtMyEgQLhZ2t4odQqf5f2TCf2dUUApAFuUKnM/0.json",
+  maxSupply: 5000,
   whitelistSale: {
     price: 0.0,
     maxMintAmountPerTx: 5,
@@ -26,8 +26,8 @@ const CollectionConfig: CollectionConfigInterface = {
     price: 0.0,
     maxMintAmountPerTx: 5,
   },
-  contractAddress: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-  marketplaceIdentifier: "",
+  contractAddress: null,
+  marketplaceIdentifier: "dalmatians-official",
   marketplaceConfig: Marketplaces.openSea,
   whitelistAddresses,
 };
