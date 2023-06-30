@@ -9,6 +9,9 @@
           <a href="https://twitter.com/dalmatiansnft" target="_blank">twitter</a>
         </li>
         <li>
+          <a href="https://opensea.io/collection/dalmatiansofficial" target="_blank">Opensea</a>
+        </li>
+        <li>
           <a href="https://twitter.com/AtlanCoelho" target="_blank">artist</a>
         </li>
       </ul>
