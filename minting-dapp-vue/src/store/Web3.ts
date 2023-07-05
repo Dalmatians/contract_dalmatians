@@ -65,7 +65,7 @@ const defaultState: State = {
 }
 
 // const chains = [polygon]
-const projectId = '0d83d4f2cf23d3ecafdec74d1e273513'
+const projectId = '665d687852032cfc7d1c167792f3c74b'
 
 // const { publicClient } = configureChains(chains, [w3mProvider({ projectId })])
 const { chains, publicClient, webSocketPublicClient } = configureChains(
